@@ -15,6 +15,7 @@ import net.minecraftforge.fml.relauncher.Side;
 import toughasnails.api.config.SeasonsOption;
 import toughasnails.api.config.SyncedConfig;
 import toughasnails.api.config.GameplayOption;
+import toughasnails.season.SeasonASMHelper;
 import toughasnails.season.SeasonSavedData;
 
 public class SeasonSleepHandler 
@@ -30,10 +31,29 @@ public class SeasonSleepHandler
             if (world.areAllPlayersAsleep())
             {
                 SeasonSavedData seasonData = SeasonHandler.getSeasonSavedData(world);
-                long timeDiff = 24000L - ((world.getWorldInfo().getWorldTime() + 24000L) % 24000L);
+                long worldTime = world.getWorldInfo().getWorldTime();
+                long timeDiff;
+                
+                if (SyncedConfig.getBooleanValue(SeasonsOption.ENABLE_SEASONAL_DAYTIME))
+                {
+                    // Determine next sunrise time
+                    timeDiff = SeasonASMHelper.getNextSunriseTime(worldTime) - worldTime;
+                }
+                else
+                {
+                    timeDiff = 24000L - ((worldTime + 24000L) % 24000L);
+                }
+                
                 seasonData.seasonCycleTicks += timeDiff;
                 seasonData.markDirty();
                 SeasonHandler.sendSeasonUpdate(world);
+                
+                if (world.getGameRules().getBoolean("doDaylightCycle"))
+                {
+                    world.setWorldTime(worldTime + timeDiff);
+                }
+                
+                world.wakeAllPlayers();
             }
         }
     }
